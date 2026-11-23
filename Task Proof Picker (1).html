@@ -1,0 +1,355 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Task Proof Picker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Layout: one narrow column. Employee types a finished task on top, one answer card per task below (merged onto live version 1795432249-7c88). */
+:root {
+  --bg: #f6f6f9;
+  --surface: #ffffff;
+  --fg: #1d1b2b;
+  --muted: #625f75;
+  --line: #dcdae6;
+  --accent: #5b3fb5;
+  --accent-fg: #ffffff;
+  --accent-soft: #ece8fa;
+  --ok: #1f7a4d;
+  --ok-soft: #e1f3ea;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14131c; --surface: #1d1c28; --fg: #ecebf5; --muted: #a09db4; --line: #34324a;
+    --accent: #a794ee; --accent-fg: #17122d; --accent-soft: #2b2547; --ok: #5fcf97; --ok-soft: #1a3328;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14131c; --surface: #1d1c28; --fg: #ecebf5; --muted: #a09db4; --line: #34324a;
+  --accent: #a794ee; --accent-fg: #17122d; --accent-soft: #2b2547; --ok: #5fcf97; --ok-soft: #1a3328;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.55;
+  padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+main { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(1.9rem, 5vw, 2.6rem); line-height: 1.08; margin: 0 0 10px; text-wrap: balance; letter-spacing: -0.01em; }
+.lede { color: var(--muted); margin: 0; max-width: 56ch; }
+label.field { display: block; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+textarea {
+  width: 100%; min-height: 92px; resize: vertical;
+  font: inherit; color: var(--fg); background: var(--surface);
+  border: 1.5px solid var(--line); border-radius: 10px; padding: 12px 14px;
+}
+textarea:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+button { font: inherit; cursor: pointer; }
+.primary { background: var(--accent); color: var(--accent-fg); border: 0; border-radius: 8px; padding: 10px 20px; font-weight: 600; }
+.primary:hover { filter: brightness(1.08); }
+.hint { color: var(--muted); font-size: 0.85rem; }
+.chips-label { margin: 18px 0 0; color: var(--muted); font-size: 0.85rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.chip { background: transparent; color: var(--fg); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 0.85rem; text-align: left; }
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+
+.results { display: flex; flex-direction: column; gap: 22px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.card-head { display: flex; gap: 14px; align-items: flex-start; padding: 18px 20px; border-bottom: 1px solid var(--line); }
+.box { flex: none; width: 22px; height: 22px; margin-top: 3px; border: 2px solid var(--accent); border-radius: 5px; display: grid; place-items: center; }
+.box svg { width: 14px; height: 14px; stroke: var(--accent); }
+.task { margin: 0; font-weight: 600; font-size: 1.05rem; min-width: 0; overflow-wrap: anywhere; }
+.kind { color: var(--muted); font-size: 0.8rem; margin: 2px 0 0; }
+.card-body { padding: 20px; display: flex; flex-direction: column; gap: 22px; }
+h2 { font-family: var(--font-display); font-size: 1.35rem; line-height: 1.2; margin: 0 0 6px; text-wrap: balance; }
+h3 { font-size: 0.78rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+p { margin: 0; }
+.why { color: var(--muted); }
+ul { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill { background: var(--accent-soft); color: var(--accent); border-radius: 6px; padding: 2px 10px; font-size: 0.85rem; font-weight: 600; }
+.pill.alt { background: transparent; border: 1px solid var(--line); color: var(--muted); font-weight: 500; }
+.copybox { background: var(--bg); border: 1px dashed var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.copybox .q { font-weight: 600; overflow-wrap: anywhere; }
+.copybox .d { color: var(--muted); font-size: 0.92rem; overflow-wrap: anywhere; }
+.copybtn { align-self: flex-start; background: transparent; color: var(--accent); border: 1px solid var(--accent); border-radius: 7px; padding: 5px 12px; font-size: 0.85rem; font-weight: 600; }
+.copybtn.done { color: var(--ok); border-color: var(--ok); background: var(--ok-soft); }
+.note { font-size: 0.85rem; color: var(--muted); border-left: 3px solid var(--line); padding-left: 12px; }
+footer { color: var(--muted); font-size: 0.85rem; }
+@media (prefers-reduced-motion: no-preference) { .card { animation: rise .25s ease-out both; } }
+@keyframes rise { from { transform: translateY(6px); } to { transform: none; } }
+</style>
+
+<main>
+  <header>
+    <h1>Task Proof Picker</h1>
+    <p class="lede">Finished a task? Type it below and see what proof to submit, how to take it, and what to check before you send it.</p>
+  </header>
+
+  <section aria-label="Task input">
+    <label class="field" for="task">The task you completed (one per line)</label>
+    <textarea id="task" spellcheck="true">Mop and sanitize the ground-floor restroom before 9 AM</textarea>
+    <div class="row">
+      <button class="primary" id="go" type="button">Show me the proof</button>
+      <span class="hint">Add several tasks, one per line, to get an answer for each.</span>
+    </div>
+    <p class="chips-label">Or try one of these</p>
+    <div class="chips" id="chips" aria-label="Example tasks"></div>
+  </section>
+
+  <section class="results" id="results" aria-live="polite"></section>
+
+  <footer>If your manager asked for a different kind of proof, follow theirs. Blurry photos, cropped screenshots and photos from another day are the easiest proof for a reviewer to send back.</footer>
+</main>
+
+<script>
+(function () {
+  var GENERIC = {
+    name: "General task",
+    headline: "A photo or screenshot of the finished work",
+    why: "When a task has no obvious file to hand in, a dated photo or screenshot of the end result is the quickest thing for a reviewer to check.",
+    formats: ["Photo", "Screenshot", "PDF"],
+    submit: ["A clear photo or screenshot of the finished result", "One wider shot that shows where it is (room, screen, page)", "Anything with a date, name or ID in view"],
+    tips: ["Take it as soon as you finish", "Keep the result in focus and fully in the frame", "Show the date or time if you can"],
+    check: ["The result is visible and in focus", "It matches the wording of the task", "The file date fits the task window"],
+    note: "What the photo shows:"
+  };
+
+  var CATS = [
+    { name: "Cleaning", re: "clean|mop|sweep|wash|sanitiz|disinfect|tidy|dust|vacuum|restroom|toilet|housekeep|garbage|trash|wipe|polish",
+      headline: "Before and after photos of the same spot", why: "A matching pair shows the work happened, and the reviewer sees the difference in seconds.",
+      formats: ["Photo"], alt: ["Short video walk-through"],
+      submit: ["Photo of the area before you start", "Photo of the same spot, same angle, when finished", "Close-up of anything that was dirty or flagged"],
+      tips: ["Stand in the same place for both photos", "Switch on the lights or flash if the area is dim", "Move buckets and tools out of the after photo"],
+      check: ["Both photos show the same place and angle", "Floors and surfaces look clean in the after photo", "Photo date falls inside the task window"],
+      note: "Area cleaned:" },
+    { name: "Repair or maintenance", re: "repair|fix|replace|install|maintenance|servic|bulb|leak|plumb|electric|hvac|filter|paint|assemble|mount|tighten|lubric",
+      headline: "Before, after and a short clip of it working", why: "The fault, the fixed part and a clip of it running cover the whole job.",
+      formats: ["Photo", "Video"], alt: ["PDF job card"],
+      submit: ["Photo of the fault before you touch it", "Photo of the new or fixed part in place", "10 to 20 second clip showing it working"],
+      tips: ["Show the asset tag or location in the first photo", "Film the part running, not just sitting there", "Keep the clip steady and under 20 seconds"],
+      check: ["The same asset appears in every file", "The fault is visible in the first photo", "The clip shows normal operation"],
+      note: "Asset ID or location:" },
+    { name: "Inventory", re: "inventory|stock|count|reorder|shelf|shelves|warehouse|restock|expiry|expire|pallet",
+      headline: "Your count sheet plus a photo of the shelf", why: "The written count and a picture of the shelf let a reviewer spot-check your number.",
+      formats: ["Photo", "Spreadsheet"], alt: ["PDF export from your stock system"],
+      submit: ["Filled count sheet, flat and readable, or the exported spreadsheet", "Photo of the shelf or bay you counted", "Close-up of low or expired items"],
+      tips: ["Lay the sheet flat and fit all four corners in the photo", "Include the shelf label in the shelf photo", "Write the total clearly at the bottom of the sheet"],
+      check: ["Counts on the sheet are legible", "Shelf photo matches the location on the sheet", "Totals add up"],
+      note: "Total counted:" },
+    { name: "Documents and paperwork", re: "report|audit|summary|minutes|policy|document|paperwork|form|sign|contract|certificate|licen[sc]e|permit|compliance|submit|filing|letter|agreement",
+      headline: "The finished document as one PDF", why: "A PDF keeps the layout and signatures intact and opens on any device.",
+      formats: ["PDF"], alt: ["Photo of a signed paper copy"],
+      submit: ["Final version as one PDF", "Scan or photo of signed pages, if signatures are needed", "Your name and the date on the first page"],
+      tips: ["Export or print to PDF instead of sending a screenshot", "Scan paper pages flat, in order, in one file", "Open the file once yourself to check every page is there"],
+      check: ["File opens and is the final version", "Signatures and dates are present", "All pages are included"],
+      note: "Document name and version:" },
+    { name: "Meeting or training", re: "meeting|training|attend|workshop|session|class|orientation|briefing|toolbox|drill|webinar|onboard",
+      headline: "Signed attendance sheet or participant list screenshot", why: "Attendance is shown by names and signatures, or by the call's participant list.",
+      formats: ["Photo", "Screenshot", "PDF"], alt: ["Exported attendance CSV"],
+      submit: ["Photo of the signed attendance sheet", "Screenshot of the participant list for online sessions", "Photo of the agenda or slide on screen"],
+      tips: ["Take the sheet photo before people leave", "For online calls, screenshot the list while everyone is still in", "Fit the session title and date in the shot"],
+      check: ["Names are readable", "Date and session title are visible", "Headcount matches who was expected"],
+      note: "Number of attendees:" },
+    { name: "Delivery or dispatch", re: "deliver|dispatch|ship|courier|pickup|pick up|drop off|handover|hand over|parcel|package|collect",
+      headline: "Photo of the item at drop-off plus the signed receipt", why: "A delivered item with its label and a receiver's signature is hard to dispute.",
+      formats: ["Photo", "PDF"], alt: [],
+      submit: ["Package at the drop location with the address or label visible", "Signed delivery slip or receiver confirmation", "Wide shot showing the location"],
+      tips: ["Photograph the label before you hand it over", "Ask the receiver to print their name beside the signature", "Include a landmark or door number in the wide shot"],
+      check: ["Label or address is readable", "Signature or receiver name is present", "Photo time matches the delivery slot"],
+      note: "Received by:" },
+    { name: "Payment or purchase", re: "pay|invoice|bill|purchase|buy|receipt|refund|reimburse|expense|transfer|deposit|order",
+      headline: "Receipt or payment confirmation", why: "The receipt carries the amount, date and reference number a reviewer needs.",
+      formats: ["Photo", "Screenshot", "PDF"], alt: [],
+      submit: ["Receipt flat on a table, all four corners in frame", "Or a screenshot of the payment app or bank confirmation with the reference number", "Or the invoice as a PDF"],
+      tips: ["Smooth out crumpled receipts before the photo", "Scroll so the amount and reference number are both on screen", "Hide card numbers and balances before you screenshot"],
+      check: ["Amount and date are readable", "Reference number is present", "Vendor name matches the task"],
+      note: "Amount and reference number:" },
+    { name: "Digital or software work", re: "deploy|release|website|code|software|server|backup|update|upgrade|database|migrat|login|account|email|setup|configure|dashboard|settings|password|install software",
+      headline: "Full-screen screenshot of the finished state", why: "A screenshot with the date visible shows the change is live without giving anyone access.",
+      formats: ["Screenshot", "PDF"], alt: ["Short screen recording"],
+      submit: ["Full-screen screenshot with the clock or browser address bar visible", "The success or confirmation message", "The settings or version page that shows the change"],
+      tips: ["Capture the whole screen, not a cropped corner", "Take it right after the confirmation appears", "Cover or blur passwords and private data first"],
+      check: ["Date and time are visible", "The confirmation message is on screen", "No passwords or private data are shown"],
+      note: "Link or version number:" },
+    { name: "Social media or marketing", re: "social|instagram|facebook|linkedin|tweet|campaign|advert|newsletter|marketing|poster|flyer|banner|youtube|blog|post",
+      headline: "Screenshot of the live post, plus its link", why: "The screenshot freezes what went out, and the link lets anyone confirm it is still up.",
+      formats: ["Screenshot"], alt: ["PDF of the scheduled queue"],
+      submit: ["Screenshot of the live post with the account name and date visible", "Screenshot of reach or analytics, if the task asks for it", "Screenshot of the scheduling confirmation for future posts"],
+      tips: ["Open the post on its own page before you screenshot", "Copy the post link into your note", "Include the account name at the top of the shot"],
+      check: ["Account name matches the brand", "Post text and image are correct", "Link opens the same post"],
+      note: "Link to the post:" },
+    { name: "Safety or inspection", re: "safety|fire|extinguisher|inspect|ppe|first aid|temperature|calibrat|gauge|meter|reading|alarm|emergency|hygiene|pest|sprinkler",
+      headline: "Photo of the item with its tag, gauge or reading in view", why: "Putting the asset ID and the reading in one frame shows the check happened at that item.",
+      formats: ["Photo"], alt: ["Scanned signed checklist (PDF)"],
+      submit: ["The item in frame with its asset tag or label", "Close-up of the inspection tag, gauge or reading", "Photo of the signed checklist, if one is used"],
+      tips: ["Tap the screen to focus on the gauge or tag", "Avoid glare on glass dials", "Take one wide shot first so the location is clear"],
+      check: ["Asset ID is readable", "Reading or tag date is in focus", "Result is within the allowed range"],
+      note: "Reading or result:" },
+    { name: "Food or kitchen", re: "cook|kitchen|food|meal|fridge|freezer|bake|catering|serving",
+      headline: "Photo of the dish, or the thermometer and fridge display", why: "Food tasks are best shown by what is on the plate or what the display reads.",
+      formats: ["Photo"], alt: ["Temperature log (Spreadsheet)"],
+      submit: ["Finished dish or prepared tray", "Thermometer or fridge display with the number readable", "Wide shot of the station"],
+      tips: ["Get close enough that the number is readable", "Wipe condensation off the display first", "Include the label and date on stored food"],
+      check: ["Temperature is readable and in range", "Labels and dates are visible", "Station looks tidy"],
+      note: "Temperature reading:" },
+    { name: "Creative or content work", re: "design|draw|write|draft|edit|record|shoot|photograph|logo|artwork|translat|content|article|script|video|animation",
+      headline: "The finished file itself", why: "For work that produces a file, the file is the proof.",
+      formats: ["Image", "Document", "Video"], alt: ["PDF export"],
+      submit: ["The final export (image, document or video)", "Screenshot of the source file showing the name and date", "Any earlier version the reviewer asked to see"],
+      tips: ["Export the final version instead of sharing a work in progress", "Put the version number in the file name", "Open the exported file once to check it plays or displays"],
+      check: ["File opens and matches the brief", "Name or version is clear", "Nothing is left in draft state"],
+      note: "File name and version:" },
+    { name: "Learning", re: "course|study|learn|exam|test|lesson|assignment|homework|quiz|module",
+      headline: "Certificate or screenshot of the completed course", why: "A completion page or certificate shows your name, the course and the date in one place.",
+      formats: ["PDF", "Screenshot"], alt: [],
+      submit: ["Completion certificate as a PDF", "Or a screenshot of the course page showing 100% and your name", "Score screen for tests"],
+      tips: ["Download the certificate instead of screenshotting it if the site offers one", "Show your name and the course title in the same shot", "Capture the score screen before you close it"],
+      check: ["Name matches yours", "Course title matches the task", "Completion date is present"],
+      note: "Course name and score:" }
+  ];
+
+  var EXAMPLES = [
+    "Restock the first-aid kit and photograph the shelf",
+    "Pay the electricity bill for November",
+    "Attend Monday safety briefing",
+    "Post the weekend offer on Instagram",
+    "Deliver the order to Sector 12 customer",
+    "Take the monthly stock count in Store B"
+  ];
+
+  function analyze(task) {
+    var t = task.toLowerCase();
+    var scored = CATS.map(function (c) {
+      var m = t.match(new RegExp(c.re, "g"));
+      return { c: c, s: m ? m.length : 0 };
+    }).filter(function (x) { return x.s > 0; }).sort(function (a, b) { return b.s - a.s; });
+    return { primary: scored.length ? scored[0].c : GENERIC, secondary: scored.length > 1 ? scored[1].c : null };
+  }
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function list(items) {
+    var u = el("ul");
+    items.forEach(function (i) { u.appendChild(el("li", null, i)); });
+    return u;
+  }
+  function section(title, node) {
+    var d = el("div");
+    d.appendChild(el("h3", null, title));
+    d.appendChild(node);
+    return d;
+  }
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  function copy(text, btn) {
+    function ok() {
+      var old = btn.textContent;
+      btn.textContent = "Copied";
+      btn.classList.add("done");
+      setTimeout(function () { btn.textContent = old; btn.classList.remove("done"); }, 1400);
+    }
+    function fallback() {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); ok(); } catch (e) { btn.textContent = "Select and copy manually"; }
+      document.body.removeChild(ta);
+    }
+    try {
+      navigator.clipboard.writeText(text).then(ok, fallback);
+    } catch (e) { fallback(); }
+  }
+
+  function card(task) {
+    var r = analyze(task), p = r.primary, s = r.secondary;
+    var formats = p.formats.slice();
+    if (s) s.formats.forEach(function (t) { if (formats.indexOf(t) < 0 && formats.length < 4) formats.push(t); });
+    var alt = (p.alt || []).slice();
+    if (s && alt.length < 2) alt.push(s.headline);
+
+    var shortTask = task.length > 90 ? task.slice(0, 87).trim() + "…" : task;
+    var noteHead = "Completed: " + cap(shortTask.replace(/[.\s]+$/, ""));
+    var noteLine = p.note + " ____";
+
+    var c = el("article", "card");
+    var head = el("div", "card-head");
+    var box = el("div", "box");
+    box.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>';
+    var ht = el("div");
+    ht.style.minWidth = "0";
+    ht.appendChild(el("p", "task", task));
+    ht.appendChild(el("p", "kind", "Looks like: " + p.name + (s ? " + " + s.name.toLowerCase() : "")));
+    head.appendChild(box); head.appendChild(ht);
+    c.appendChild(head);
+
+    var body = el("div", "card-body");
+    var top = el("div");
+    top.appendChild(el("h2", null, p.headline));
+    top.appendChild(el("p", "why", p.why));
+    body.appendChild(top);
+
+    var pills = el("div", "pills");
+    formats.forEach(function (t) { pills.appendChild(el("span", "pill", t)); });
+    alt.forEach(function (a) { pills.appendChild(el("span", "pill alt", "Also fine: " + a)); });
+    body.appendChild(section("Proof to submit", pills));
+
+    body.appendChild(section("What to include", list(p.submit)));
+    body.appendChild(section("How to capture it", list(p.tips)));
+    body.appendChild(section("Check before you submit", list(p.check)));
+
+    var cb = el("div", "copybox");
+    cb.appendChild(el("div", "q", noteHead));
+    cb.appendChild(el("div", "d", noteLine));
+    var btn = el("button", "copybtn", "Copy note");
+    btn.type = "button";
+    btn.addEventListener("click", function () { copy(noteHead + "\n" + noteLine, btn); });
+    cb.appendChild(btn);
+    body.appendChild(section("Note to add with your proof", cb));
+
+    body.appendChild(el("p", "note", "Fill in the blank before you send. A one-line note saves the reviewer a follow-up question."));
+
+    c.appendChild(body);
+    return c;
+  }
+
+  function render() {
+    var lines = document.getElementById("task").value.split("\n").map(function (l) { return l.trim(); }).filter(Boolean).slice(0, 12);
+    var out = document.getElementById("results");
+    out.textContent = "";
+    if (!lines.length) {
+      out.appendChild(el("p", "hint", "Type the task you finished to see what proof to submit."));
+      return;
+    }
+    lines.forEach(function (l) { out.appendChild(card(l)); });
+  }
+
+  var chips = document.getElementById("chips");
+  EXAMPLES.forEach(function (ex) {
+    var b = el("button", "chip", ex);
+    b.type = "button";
+    b.addEventListener("click", function () {
+      var ta = document.getElementById("task");
+      ta.value = ex;
+      render();
+    });
+    chips.appendChild(b);
+  });
+  document.getElementById("go").addEventListener("click", render);
+  document.getElementById("task").addEventListener("keydown", function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") render();
+  });
+  render();
+})();
+</script>
+
+</body></html>
